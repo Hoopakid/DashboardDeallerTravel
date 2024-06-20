@@ -6,6 +6,9 @@ from fuzzywuzzy import process, fuzz
 
 from .utils import find_best_match, normalize_name, remove_numbers, transliterate_name, get_token, get_amocrm_leads
 
+
+PLAN = 5_000_000
+
 # Create your views here.
 def home(r):
     today = datetime.now()
@@ -13,6 +16,8 @@ def home(r):
     end_date_unix = int(today.replace(hour=23, minute=59, second=59).timestamp())
 
     crm_data = get_amocrm_leads(os.environ.get('AMOCRM_TOKEN'), os.environ.get('AMOCRM_URL'), start_date_unix, end_date_unix, 'updated_at')
+    crm_names = crm_data['responsible_user'].unique()
+    print(crm_data.columns)
     print("CRM data fetched")
 
     try:
@@ -27,38 +32,30 @@ def home(r):
     panel_data.rename(columns={'Имя':'name', 'Общ. кол.':'sales_count', 'Итого':'sales_price'}, inplace=True)
     print("Panel data fetched")
 
+    panel_data.drop(columns=['Call Center', 'Сумма КЦ', 'Telegram', 'Сумма Бот'], inplace=True)
     panel_data['sales_count'] = panel_data['sales_count'].str.replace(r'[^\d]', '', regex=True).astype(int)
     panel_data['sales_price'] = panel_data['sales_price'].str.replace(r'[^\d]', '', regex=True).astype(int)
     panel_data['name'] = panel_data['name'].apply(lambda x: normalize_name(x))
+    panel_data['name'] = panel_data['name'].apply(find_best_match, args=(crm_names,))
     
-    # panel_data = {normalize_name(k): v for k, v in panel_data.items()}
-
-
-    by_staff_leads = crm_data.groupby('responsible_user').aggregate(
-        leads=('id', 'count'),
-    ).reset_index()
+    by_staff_leads = crm_data.groupby('responsible_user').aggregate(leads=('id', 'count')).reset_index()
+    new_leads = crm_data[crm_data['created_at'] > start_date_unix]
+    by_staff_new_leads = new_leads.groupby('responsible_user').aggregate(new_leads=('id', 'count')).reset_index()
+    by_staff_leads = pd.merge(by_staff_leads, by_staff_new_leads, on='responsible_user', how='left')
     print(by_staff_leads)
-    crm_names = crm_data['responsible_user'].unique()
-    panel_data['matched_name'] = panel_data['name'].apply(find_best_match, args=(crm_names,))
-    print(panel_data)
 
 
+    merged = by_staff_leads.merge(panel_data, left_on="responsible_user", right_on='name')
+    merged.drop(columns=['name'], inplace=True)
+    merged['conversion'] = round(merged['sales_count']/merged['leads']*100)
+    merged['plan'] = round(merged['sales_price']/PLAN*100)
+    merged.sort_values('sales_price', ascending=False, inplace=True)
+    print(merged)
 
-    # Map and update names in the panel data to match CRM names
-    # mapped_panel_data = []
-    # for entry in panel_data:
-    #     panel_name = list(entry.keys())[0]
-    #     matched_name = find_best_match(panel_name, crm_names)
-    #     if matched_name:
-    #         original_name = crm_data[crm_data['normalized_name'] == matched_name]['responsible_user'].values[0]
-    #         mapped_panel_data.append({original_name: entry[panel_name]})
-    #     else:
-    #         mapped_panel_data.append({panel_name: entry[panel_name]})  # Keep original if no match
-
-    # print(mapped_panel_data)
-
+    leaderboard = [{"name": i['responsible_user'], "average": simplifyNumber(round(i['sales_price']/i['sales_count'])), "sales_price": simplifyNumber(i["sales_price"]), "conversion": int(i['conversion'])} for i in merged.to_dict('records')]
     data = {
-        # 'leaderboard': leaderboard
+        'leaderboard': leaderboard,
+        'staff': merged.to_dict('records')
     }
     return render(r, 'home.html', context=data)
 

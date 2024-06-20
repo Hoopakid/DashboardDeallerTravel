@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="{% static 'styles/home.css' %}">
 </head>
 <body>
+    <input type="hidden" name="staff" value="{{staff}}">
+    <input type="hidden" name="leaderboard" value="{{leaderboard}}">
     <div class="wrapper">
         <section class="sidebar">
             <div class="logo">
@@ -18,7 +20,7 @@
             <ul>
                 <li data-selected="true" data-staff="all">Hamma</li>
                 {% for i in leaderboard %}
-                <li data-selected="false">{{ i.staff }}</li>
+                <li data-selected="false">{{ i.name }}</li>
                 {% endfor %}
                 <!-- <li data-selected="false" data-staff="shokir">Shokir</li>
                 <li data-selected="false" data-staff="hasan">Hasan</li>
@@ -42,63 +44,63 @@
                         {% for i in leaderboard %}
                         <tr>
                             <td>{{ forloop.counter }}</td>
-                            <td>{{ i.staff }}</td>
+                            <td>{{ i.name }}</td>
                             <td>{{ i.sales_price }} so'm</td>
                             <td>{{ i.average }} so'm</td>
-                            <td>34%</td>
+                            <td>{{ i.conversion }}%</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
             <div class="staff">
-                <h1>Shokirning kunlik hisoboti</h1>
+                <h1></h1>
                 <div class="stats">
 
                     <div>
                         <div class="icon"></div>
-                        <p>Yangi lid</p>
-                        <span>145</span>
+                        <p>Yangi lidlar</p>
+                        <span id="new-leads">145</span>
                     </div>
                     <div>
                         <div class="icon"></div>
                         <p>Sotuv</p>
-                        <span>10</span>
+                        <span id="sales-count">10</span>
                     </div>
                     <div>
                         <div class="icon"></div>
                         <p>Konversiya</p>
-                        <span>35%</span>
+                        <span id="conversion">35%</span>
                     </div>
                     <div>
                         <div class="icon"></div>
-                        <p>Aloqaga chiqildi</p>
-                        <span>145</span>
+                        <p>Aktiv lidlar</p>
+                        <span id="active-leads">0</span>
                     </div>
                     <div>
                         <div class="icon"></div>
                         <p>Sotuv hajmi</p>
-                        <span>100K</span>
+                        <span id="sales-price">100K</span>
                     </div>
                     <div>
                         <div class="icon"></div>
-                        <p>Aloqaga chiqish vaqti</p>
-                        <span>10:50</span>
+                        <p>Plan</p>
+                        <span id="plan"></span>
                     </div>
                     <div>
                         <div class="icon"></div>
                         <p>Topshiriq belgilash</p>
-                        <span>50%</span>
+                        <span id="tasks">-%</span>
                     </div>
                     <div>
                         <div class="icon"></div>
                         <p>Komentariya yozish</p>
-                        <span>24%</span>
+                        <span id="notes">-%</span>
                     </div>
                     <div>
                         <div class="icon"></div>
                         <p>Kontakt to'ldirish</p>
-                        <span>60%</span>
+                        <span id="contact-completion">-%</span>
                     </div>
                 </div>
             </div>
