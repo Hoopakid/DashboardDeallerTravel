@@ -1,0 +1,110 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strawberry</title>
+
+    <script src="{% static 'scripts/home.js' %}" defer></script>
+    <link rel="stylesheet" href="{% static 'styles/home.css' %}">
+</head>
+<body>
+    <div class="wrapper">
+        <section class="sidebar">
+            <div class="logo">
+                <img src="{% static 'media/logo.svg' %}" alt="">
+            </div>
+            <ul>
+                <li data-selected="true" data-staff="all">Hamma</li>
+                {% for i in leaderboard %}
+                <li data-selected="false">{{ i.staff }}</li>
+                {% endfor %}
+                <!-- <li data-selected="false" data-staff="shokir">Shokir</li>
+                <li data-selected="false" data-staff="hasan">Hasan</li>
+                <li data-selected="false" data-staff="samandar">Samandar</li>
+                <li data-selected="false" data-staff="sherzod">Sherzod</li> -->
+            </ul>
+        </section>
+        <section class="content">
+            <div class="all">
+                <table>
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Ism</th>
+                            <th>Savdo Hajmi</th>
+                            <th>O'rtacha chek</th>
+                            <th>Konversiya</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for i in leaderboard %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ i.staff }}</td>
+                            <td>{{ i.sales_price }} so'm</td>
+                            <td>{{ i.average }} so'm</td>
+                            <td>34%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="staff">
+                <h1>Shokirning kunlik hisoboti</h1>
+                <div class="stats">
+
+                    <div>
+                        <div class="icon"></div>
+                        <p>Yangi lid</p>
+                        <span>145</span>
+                    </div>
+                    <div>
+                        <div class="icon"></div>
+                        <p>Sotuv</p>
+                        <span>10</span>
+                    </div>
+                    <div>
+                        <div class="icon"></div>
+                        <p>Konversiya</p>
+                        <span>35%</span>
+                    </div>
+                    <div>
+                        <div class="icon"></div>
+                        <p>Aloqaga chiqildi</p>
+                        <span>145</span>
+                    </div>
+                    <div>
+                        <div class="icon"></div>
+                        <p>Sotuv hajmi</p>
+                        <span>100K</span>
+                    </div>
+                    <div>
+                        <div class="icon"></div>
+                        <p>Aloqaga chiqish vaqti</p>
+                        <span>10:50</span>
+                    </div>
+                    <div>
+                        <div class="icon"></div>
+                        <p>Topshiriq belgilash</p>
+                        <span>50%</span>
+                    </div>
+                    <div>
+                        <div class="icon"></div>
+                        <p>Komentariya yozish</p>
+                        <span>24%</span>
+                    </div>
+                    <div>
+                        <div class="icon"></div>
+                        <p>Kontakt to'ldirish</p>
+                        <span>60%</span>
+                    </div>
+                </div>
+            </div>
+
+            <i>© The Wolf</i>
+        </section>
+    </div>
+</body>
+</html>
