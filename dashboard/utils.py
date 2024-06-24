@@ -1,178 +1,101 @@
-import logging, os, asyncio, pandas as pd, requests, re
-
-from time import sleep
-from playwright.async_api import async_playwright
-from playwright.sync_api import sync_playwright
-from datetime import datetime, timedelta
+import os
+from psycopg2 import extras, connect
+from datetime import timedelta, datetime
 from dotenv import load_dotenv
-
-from fuzzywuzzy import fuzz, process
-import transliterate
 
 load_dotenv()
 
-USERNAME = os.environ.get('USER_USERNAME')
-PASSWORD = os.environ.get('PASSWORD')
+DB_NAME = os.environ.get('DB_NAME')
+DB_USER = os.environ.get('DB_USER')
+DB_PASSWORD = os.environ.get('DB_PASSWORD')
+DB_HOST = os.environ.get('DB_HOST')
+DB_PORT = os.environ.get('DB_PORT')
 
-def get_token():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
-        page = browser.new_page()
-        page.goto('https://panel.strawberryhouse.uz/login')
-        username = page.get_by_placeholder("Логин")
-        username.fill(USERNAME)
 
-        password = page.get_by_placeholder('Пароль')
-        password.fill(PASSWORD)
+def connection():
+    conn = connect(
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        host=DB_HOST,
+        port=DB_PORT
+    )
+    return conn
 
-        page.get_by_role('button').click()
-        today = datetime.now().date()
-        sleep(3)
-        last_day_url = f'https://panel.strawberryhouse.uz/statistics/operators?start={today}+00%3A00&end={str(today)}+23%3A59'
-        page.goto(last_day_url)
 
-        page.wait_for_selector('table')
-        rows = page.query_selector_all('table tbody tr')
-        datas = []
-        for r in rows:
-            row = r.query_selector_all('td')
-            data =  [td.text_content() for td in row]
-            if data[-1].endswith('сум'):
+def get_user_by_id(user_id: int):
+    conn = connection()
+    cur = conn.cursor(cursor_factory=extras.DictCursor)
+    cur.execute("SELECT name, last_name FROM users WHERE external_id = %s", (user_id,))
+    user = cur.fetchone()
+    if user is None:
+        return None
+    conn.close()
+    return f'{user[0]} {user[1]}'
+
+
+def get_active_deals_count(user_id):
+    conn = connection()
+    cur = conn.cursor(cursor_factory=extras.DictCursor)
+    today = (datetime.now() - timedelta(days=40)).replace(hour=0, minute=0, second=0, microsecond=0)
+    format_string = "%Y-%m-%d %H:%M:%S"
+    cur.execute("select * from deal where date_modify > %s and assigned_by_id = %s",
+                (today.strftime(format_string), user_id))
+    active_deals = cur.fetchall()
+    return len(active_deals)
+
+
+def get_all_deals_per_user(deals: list, user_id=int):
+    deal_count = 0
+    for deal in deals:
+        for key, value in deal.items():
+            if key == 'assigned_by_id' and value == user_id:
+                deal_count += 1
+    return deal_count
+
+
+def get_deals():
+    conn = connection()
+    cur = conn.cursor(cursor_factory=extras.DictCursor)
+    today = (datetime.now() - timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0)
+    format_string = "%Y-%m-%d %H:%M:%S"
+    cur.execute("SELECT * FROM deal WHERE date_create > %s", (today.strftime(format_string),))
+    deals = cur.fetchall()
+    data = {}
+    for deal in deals:
+        for key, val in deal.items():
+            if key == 'closed' and val == 'N':
+                if deal['assigned_by_id'] not in data:
+                    data[deal['assigned_by_id']] = []
                 temp = {
-                    data[1]: {
-                        'sales_count': int(data[6].replace(' шт', '').replace(' ', '')),
-                        'sales_price': int(data[7].replace(' сум', '').replace(' ', ''))
-                    }}
-                datas.append(temp)
-    browser.close()
-    return datas
+                    'opportunity': deal['opportunity']
+                }
+                data[deal['assigned_by_id']].append(temp)
 
-def prepare_params(params, prev=""):
-    """Transforms list of params to a valid bitrix/amocrm array."""
-    ret = ""
-    if isinstance(params, dict):
-        for key, value in params.items():
-            if isinstance(value, dict):
-                if prev:
-                    key = "{0}[{1}]".format(prev, key)
-                ret += prepare_params(value, key)
-            elif (isinstance(value, list) or isinstance(value, tuple)) and len(
-                    value
-            ) > 0:
-                for offset, val in enumerate(value):
-                    if isinstance(val, dict):
-                        ret += prepare_params(
-                            val, "{0}[{1}][{2}]".format(prev, key, offset)
-                        )
-                    else:
-                        if prev:
-                            ret += "{0}[{1}][{2}]={3}&".format(prev, key, offset, val)
-                        else:
-                            ret += "{0}[{1}]={2}&".format(key, offset, val)
-            else:
-                if prev:
-                    ret += "{0}[{1}]={2}&".format(prev, key, value)
-                else:
-                    ret += "{0}={1}&".format(key, value)
-    return ret
+    updated_data = []
+    all_deals = 0
+    for key, val in data.items():
+        user = get_user_by_id(key)
+        if user is None:
+            user = 'unknown'
+        opportunity, opportunity_count = 0, 0
+        for value in val:
+            if value['opportunity'] > 0.0:
+                opportunity_count += 1
+            opportunity += value['opportunity']
+            all_deals += 1
+        new_val = {
+            'responsible_user': user,
+            'sales_price': int(opportunity),
+            'average_check': round(int(opportunity) / opportunity_count if opportunity_count > 0 else 0, 1),
+            'conversion': round((opportunity_count / all_deals if opportunity_count > 0 and all_deals > 0 else 0) * 100,
+                                1),
+            'sales_count': opportunity_count,
+            'new_deals': get_all_deals_per_user(deals, key),
+            'leads': get_active_deals_count(key)
+        }
 
+        updated_data.append(new_val)
 
-def get_amocrm_staff(token, url, select=[]):
-    header = {'Authorization': f"Bearer {token}"}
-    resp = requests.get(url+'users', headers=header)
-    if resp.status_code==401:
-        return {'unauthorized':True}
-    r = resp.json()['_embedded']['users']
-
-    while resp.json()['_links'].get('next', False):
-        resp = requests.get(resp.json()['_links']['next']['href'], headers=header)
-        if resp.status_code==204: break
-        r.extend(resp.json()['_embedded']['users'])
-    if not select:
-        return r
-
-    r = [{key:val for key, val in i.items() if key in select} for i in r]
-    return r
-def get_amocrm_leads(token, url,
-              start_date: int,
-              end_date: int,
-              type='created_at',
-              params={},
-    ):
-    params['filter'] = {} if not params.get('filter') else params['filter']
-    params['filter'][type] = {
-        'from': start_date,
-        'to': end_date
-    }
-    # print(prepare_params(params))
-    header = {'Authorization': f"Bearer {token}"}
-    resp = requests.get(url+'leads', params=prepare_params(params), headers=header)
-
-    if resp.status_code==401:
-        return {'unauthorized':True}
-    elif resp.status_code==204:
-        return pd.DataFrame()
-
-    r = resp.json()['_embedded']['leads']
-
-    while resp.json()['_links'].get('next', False):
-        resp = requests.get(resp.json()['_links']['next']['href'], headers=header)
-        if resp.status_code==204: break
-        r.extend(resp.json()['_embedded']['leads'])
-
-    # EXTRAS
-    users = get_amocrm_staff(token, url)
-    for i in r:
-        for s in users:
-            if i.get('responsible_user_id') == s.get('id'):
-                i['responsible_user'] = normalize_name(s.get('name'))
-
-    r = pd.DataFrame(r)
-    return r
-
-
-def transliterate_name(name):
-    try:
-        return transliterate.translit(name, reversed=True)
-    except:
-        return name
-
-def remove_numbers(name):
-    return re.sub(r'\d+', '', name).strip()
-
-def normalize_name(name):
-    name = remove_numbers(name)
-    name = transliterate_name(name)
-    return name
-
-def find_best_match(name, choices):
-    match, score = process.extractOne(name, choices)
-    return match if score > 80 else None  # Adjust threshold as needed
-
-
-def get_cookie_by_key(cookies, key):
-    for cookie in cookies:
-        if cookie['name'] == key:
-            return cookie['value']
-    return None
-
-
-def get_token():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
-        page = context.new_page()
-        page.goto('https://panel.strawberryhouse.uz/login')
-        username = page.get_by_placeholder("Логин")
-        username.fill(USERNAME)
-
-        password = page.get_by_placeholder('Пароль')
-        password.fill(PASSWORD)
-
-        page.get_by_role('button').click()
-        sleep(3)
-        cookies = context.cookies()
-        cookie = get_cookie_by_key(cookies, '_identity-backend')
-        browser.close()
-    return cookie
-
+    conn.close()
+    return updated_data

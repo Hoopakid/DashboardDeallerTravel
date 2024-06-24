@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="{% static 'styles/home.css' %}">
 </head>
 <body>
-    <input type="hidden" name="staff" value="{{staff}}">
     <input type="hidden" name="leaderboard" value="{{leaderboard}}">
     <div class="wrapper">
         <section class="sidebar">
@@ -20,7 +19,7 @@
             <ul>
                 <li data-selected="true" data-staff="all">Hamma</li>
                 {% for i in leaderboard %}
-                <li data-selected="false">{{ i.name }}</li>
+                <li data-selected="false">{{ i.responsible_user }}</li>
                 {% endfor %}
                 <!-- <li data-selected="false" data-staff="shokir">Shokir</li>
                 <li data-selected="false" data-staff="hasan">Hasan</li>
@@ -44,9 +43,9 @@
                         {% for i in leaderboard %}
                         <tr>
                             <td>{{ forloop.counter }}</td>
-                            <td>{{ i.name }}</td>
+                            <td>{{ i.responsible_user }}</td>
                             <td>{{ i.sales_price }} so'm</td>
-                            <td>{{ i.average }} so'm</td>
+                            <td>{{ i.average_check }} so'm</td>
                             <td>{{ i.conversion }}%</td>
                         </tr>
                         {% endfor %}
@@ -85,7 +84,7 @@
                     <div>
                         <div class="icon"></div>
                         <p>Plan</p>
-                        <span id="plan"></span>
+                        <span id="plan">-%</span>
                     </div>
                     <div>
                         <div class="icon"></div>
