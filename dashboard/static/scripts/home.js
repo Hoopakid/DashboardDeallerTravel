@@ -40,4 +40,7 @@ function changeStaffInfo(staff) {
     document.getElementById('duration').textContent = data.call_average
     document.getElementById('call-in').textContent = data.call_in
     document.getElementById('call-out').textContent = data.call_out
+    document.getElementById('coming-time').textContent = data.in_time
+    document.getElementById('leaving-time').textContent = data.out_time
+    document.getElementById('all-time').textContent = data.all_time
 }
