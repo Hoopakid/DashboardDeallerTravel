@@ -7,105 +7,239 @@
     <title>Strawberry</title>
 
     <script src="{% static 'scripts/home.js' %}" defer></script>
+
+    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+
     <link rel="stylesheet" href="{% static 'styles/home.css' %}">
 </head>
 <body>
-    <input type="hidden" name="leaderboard" value="{{leaderboard}}">
-    <div class="wrapper">
-        <section class="sidebar">
-            <div class="logo">
-                <img src="{% static 'media/logo.svg' %}" alt="">
-            </div>
-            <ul>
-                <li data-selected="true" data-staff="all">Hamma</li>
-                {% for i in leaderboard %}
+<input type="hidden" name="leaderboard" value="{{ leaderboard }}">
+<div class="wrapper">
+    <section class="sidebar">
+        <div class="logo">
+            <img src="{% static 'media/download.png' %}" alt="">
+        </div>
+        <ul>
+            <li data-selected="true" data-staff="all">Hamma</li>
+            {% for i in leaderboard %}
                 <li data-selected="false">{{ i.responsible_user }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+    <section class="content">
+        <div class="all">
+            <table>
+                <thead>
+                <tr>
+                    <th></th>
+                    <th>Ism</th>
+                    <th>Savdo Hajmi</th>
+                    <th>O'rtacha chek</th>
+                    <th>Konversiya</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for i in leaderboard %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ i.responsible_user }}</td>
+                        <td>{{ i.sales_price }} so'm</td>
+                        <td>{{ i.average_salary }} so'm</td>
+                        <td>{{ i.conversion }}%</td>
+                    </tr>
                 {% endfor %}
-                <!-- <li data-selected="false" data-staff="shokir">Shokir</li>
-                <li data-selected="false" data-staff="hasan">Hasan</li>
-                <li data-selected="false" data-staff="samandar">Samandar</li>
-                <li data-selected="false" data-staff="sherzod">Sherzod</li> -->
-            </ul>
-        </section>
-        <section class="content">
-            <div class="all">
-                <table>
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th>Ism</th>
-                            <th>Savdo Hajmi</th>
-                            <th>O'rtacha chek</th>
-                            <th>Konversiya</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for i in leaderboard %}
-                        <tr>
-                            <td>{{ forloop.counter }}</td>
-                            <td>{{ i.responsible_user }}</td>
-                            <td>{{ i.sales_price }} so'm</td>
-                            <td>{{ i.average_check }} so'm</td>
-                            <td>{{ i.conversion }}%</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            <div class="staff">
-                <h1></h1>
-                <div class="stats">
+                </tbody>
+            </table>
+        </div>
+        <div class="staff">
+            <h1></h1>
+            <div class="stats">
 
-                    <div>
-                        <div class="icon"></div>
-                        <p>Yangi lidlar</p>
-                        <span id="new-leads">145</span>
-                    </div>
-                    <div>
-                        <div class="icon"></div>
-                        <p>Sotuv</p>
-                        <span id="sales-count">10</span>
-                    </div>
-                    <div>
-                        <div class="icon"></div>
-                        <p>Konversiya</p>
-                        <span id="conversion">35%</span>
-                    </div>
-                    <div>
-                        <div class="icon"></div>
-                        <p>Aktiv lidlar</p>
-                        <span id="active-leads">0</span>
-                    </div>
-                    <div>
-                        <div class="icon"></div>
-                        <p>Sotuv hajmi</p>
-                        <span id="sales-price">100K</span>
-                    </div>
-                    <div>
-                        <div class="icon"></div>
-                        <p>Plan</p>
-                        <span id="plan">-%</span>
-                    </div>
-                    <div>
-                        <div class="icon"></div>
-                        <p>Topshiriq belgilash</p>
-                        <span id="tasks">-%</span>
-                    </div>
-                    <div>
-                        <div class="icon"></div>
-                        <p>Komentariya yozish</p>
-                        <span id="notes">-%</span>
-                    </div>
-                    <div>
-                        <div class="icon"></div>
-                        <p>Kontakt to'ldirish</p>
-                        <span id="contact-completion">-%</span>
-                    </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Chiquvchi qo'ng'iroqlar</p>
+                    <span id="call-out"></span>
+                </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Sotuvlar soni</p>
+                    <span id="sales-count"></span>
+                </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Konversiya</p>
+                    <span id="conversion"></span>
+                </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Kiruvchi qo'ng'iroqlar</p>
+                    <span id="call-in"></span>
+                </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Sotuv miqdori</p>
+                    <span id="sales-price"></span>
+                </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Aloqagacha ketgan vaqt</p>
+                    <span id="duration"></span>
+                </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Topshiriq belgilash</p>
+                    <span id="tasks">-%</span>
+                </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Izoh yozish</p>
+                    <span id="notes">-%</span>
+                </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Kontakt to'ldirish</p>
+                    <span id="contact-completion">-%</span>
+                </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Plan</p>
+                    <span id="plan">-</span>
+                </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Fact</p>
+                    <span id="fact">-</span>
+                </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Haftalik kirim</p>
+                    <div id="chartdiv"></div>
+                    <script>
+                        am5.ready(function () {
+                            var root = am5.Root.new("chartdiv");
+
+                            root.setThemes([
+                                am5themes_Animated.new(root)
+                            ]);
+
+                            var chart = root.container.children.push(am5xy.XYChart.new(root, {
+                                panX: true,
+                                panY: true,
+                                wheelX: "panX",
+                                wheelY: "zoomX",
+                                pinchZoomX: true,
+                                paddingLeft: 0,
+                                paddingRight: 1
+                            }));
+
+                            var cursor = chart.set("cursor", am5xy.XYCursor.new(root, {}));
+                            cursor.lineY.set("visible", false);
+
+
+                            var xRenderer = am5xy.AxisRendererX.new(root, {
+                                minGridDistance: 30,
+                                minorGridEnabled: true
+                            });
+
+                            xRenderer.labels.template.setAll({
+                                rotation: -90,
+                                centerY: am5.p50,
+                                centerX: am5.p100,
+                                paddingRight: 15
+                            });
+
+                            xRenderer.grid.template.setAll({
+                                location: 1
+                            })
+
+                            var xAxis = chart.xAxes.push(am5xy.CategoryAxis.new(root, {
+                                maxDeviation: 0.3,
+                                categoryField: "country",
+                                renderer: xRenderer,
+                                tooltip: am5.Tooltip.new(root, {})
+                            }));
+
+                            var yRenderer = am5xy.AxisRendererY.new(root, {
+                                strokeOpacity: 0.1
+                            })
+
+                            var yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
+                                maxDeviation: 0.3,
+                                renderer: yRenderer
+                            }));
+
+                            var series = chart.series.push(am5xy.ColumnSeries.new(root, {
+                                name: "Series 1",
+                                xAxis: xAxis,
+                                yAxis: yAxis,
+                                valueYField: "value",
+                                sequencedInterpolation: true,
+                                categoryXField: "country",
+                                tooltip: am5.Tooltip.new(root, {
+                                    labelText: "{valueY}"
+                                })
+                            }));
+
+                            series.columns.template.setAll({cornerRadiusTL: 5, cornerRadiusTR: 5, strokeOpacity: 0});
+                            series.columns.template.adapters.add("fill", function (fill, target) {
+                                return chart.get("colors").getIndex(series.columns.indexOf(target));
+                            });
+
+                            series.columns.template.adapters.add("stroke", function (stroke, target) {
+                                return chart.get("colors").getIndex(series.columns.indexOf(target));
+                            });
+
+
+                            var data = [{
+                                country: "Dushanba",
+                                value: 2024
+                            }, {
+                                country: "Seshanba",
+                                value: 1882
+                            }, {
+                                country: "Chorshanba",
+                                value: 1809
+                            }, {
+                                country: "Payshanba",
+                                value: 1322
+                            }, {
+                                country: "Juma",
+                                value: 1122
+                            }, {
+                                country: "Shanba",
+                                value: 1114
+                            }];
+                            xAxis.data.setAll(data);
+                            series.data.setAll(data);
+
+                            series.appear(1000);
+                            chart.appear(1000, 100);
+
+                        });
+                    </script>
+                    <span id="week"></span>
+                </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Kelish vaqti</p>
+                    <span id="coming-time">9:08</span>
+                </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Ketish vaqti</p>
+                    <span id="leaving-time">18:03</span>
+                </div>
+                <div>
+                    <div class="icon"></div>
+                    <p>Umumiy vaqt</p>
+                    <span id="all-time">8:55</span>
                 </div>
             </div>
+        </div>
 
-            <i>© The Wolf</i>
-        </section>
-    </div>
+    </section>
+</div>
 </body>
 </html>

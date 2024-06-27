@@ -32,17 +32,12 @@ function changeStaffInfo(staff) {
     leaderboardData.forEach(element => {
         if (element.responsible_user === staff) data = element;
         return;
-        
-        
-    });
 
-    document.getElementById('new-leads').textContent = data.new_deals
+    });
     document.getElementById('sales-count').textContent = data.sales_count
     document.getElementById('conversion').textContent = data.conversion + "%"
-    document.getElementById('active-leads').textContent = data.leads
     document.getElementById('sales-price').textContent = data.sales_price
-    // document.getElementById('plan').textContent = "%"
-    // document.getElementById('tasks').textContent = "50%"
-    // document.getElementById('notes').textContent = "50%"
-    // document.getElementById('contact-completion').textContent = "50%"
+    document.getElementById('duration').textContent = data.call_average
+    document.getElementById('call-in').textContent = data.call_in
+    document.getElementById('call-out').textContent = data.call_out
 }

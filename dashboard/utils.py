@@ -1,101 +1,72 @@
 import os
-from psycopg2 import extras, connect
-from datetime import timedelta, datetime
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_NAME = os.environ.get('DB_NAME')
-DB_USER = os.environ.get('DB_USER')
-DB_PASSWORD = os.environ.get('DB_PASSWORD')
-DB_HOST = os.environ.get('DB_HOST')
-DB_PORT = os.environ.get('DB_PORT')
+API_URL = os.environ.get('API_URL')
+NEW_API_URL = os.environ.get('NEW_API_URL')
 
 
-def connection():
-    conn = connect(
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        host=DB_HOST,
-        port=DB_PORT
-    )
-    return conn
+def sum_conversion(datas):
+    for data in datas:
+        data.update({
+            'average_salary': round(data['sales_price'] / data['sales_count'] if data['sales_count'] != 0 else 0, 1),
+            'conversion': round((data['sales_count'] / data['all_calls']) * 100 if data['all_calls'] != 0 else 0, 1)
+        })
+    return datas
 
 
-def get_user_by_id(user_id: int):
-    conn = connection()
-    cur = conn.cursor(cursor_factory=extras.DictCursor)
-    cur.execute("SELECT name, last_name FROM users WHERE external_id = %s", (user_id,))
-    user = cur.fetchone()
-    if user is None:
-        return None
-    conn.close()
-    return f'{user[0]} {user[1]}'
+def get_datas():
+    response = requests.get(API_URL + 'get-ticket-data')
+    if response.status_code == 200:
+        new_response = requests.get(NEW_API_URL + 'api/get-sarkor-data')
+        if new_response.status_code == 200:
+            call_data = new_response.json()
+            sales_data = response.json()
+            returning_users = []
 
+            if len(sales_data) >= 1 and len(call_data['ctx']) >= 1:
+                ctx = {call['name'].lower(): call for call in call_data['ctx']}
 
-def get_active_deals_count(user_id):
-    conn = connection()
-    cur = conn.cursor(cursor_factory=extras.DictCursor)
-    today = (datetime.now() - timedelta(days=40)).replace(hour=0, minute=0, second=0, microsecond=0)
-    format_string = "%Y-%m-%d %H:%M:%S"
-    cur.execute("select * from deal where date_modify > %s and assigned_by_id = %s",
-                (today.strftime(format_string), user_id))
-    active_deals = cur.fetchall()
-    return len(active_deals)
+                for sale in sales_data[1:]:
+                    user_name = sale.get('responsible_user', '').lower()
+                    temp = {
+                        'responsible_user': sale.get('responsible_user', '').capitalize(),
+                        'sales_price': sale.get('opportunity', 0),
+                        'sales_count': sale.get('count', 0),
+                        'call_average': 0,
+                        'missed_calls': 0,
+                        'call_in': 0,
+                        'call_out': 0,
+                        'all_calls': 0,
+                        'call_seconds': 0
+                    }
 
+                    if user_name in ctx:
+                        call_info = ctx[user_name]
+                        temp.update({
+                            'call_average': call_info.get('calls_average', 0),
+                            'missed_calls': call_info.get('missed_calls_count', 0),
+                            'call_in': call_info.get('call_in', 0),
+                            'call_out': call_info.get('call_out', 0),
+                            'all_calls': call_info.get('all_calls_count', 0),
+                            'call_seconds': call_info.get('calls_second', 0)
+                        })
+                    elif user_name == 'dimitriy' and 'samandar1' in ctx:
+                        call_info = ctx['samandar1']
+                        temp.update({
+                            'responsible_user': 'Samandar',
+                            'call_average': call_info.get('calls_average', 0),
+                            'missed_calls': call_info.get('missed_calls_count', 0),
+                            'call_in': call_info.get('call_in', 0),
+                            'call_out': call_info.get('call_out', 0),
+                            'all_calls': call_info.get('all_calls_count', 0),
+                            'call_seconds': call_info.get('calls_second', 0)
+                        })
 
-def get_all_deals_per_user(deals: list, user_id=int):
-    deal_count = 0
-    for deal in deals:
-        for key, value in deal.items():
-            if key == 'assigned_by_id' and value == user_id:
-                deal_count += 1
-    return deal_count
+                    returning_users.append(temp)
 
-
-def get_deals():
-    conn = connection()
-    cur = conn.cursor(cursor_factory=extras.DictCursor)
-    today = (datetime.now() - timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0)
-    format_string = "%Y-%m-%d %H:%M:%S"
-    cur.execute("SELECT * FROM deal WHERE date_create > %s", (today.strftime(format_string),))
-    deals = cur.fetchall()
-    data = {}
-    for deal in deals:
-        for key, val in deal.items():
-            if key == 'closed' and val == 'N':
-                if deal['assigned_by_id'] not in data:
-                    data[deal['assigned_by_id']] = []
-                temp = {
-                    'opportunity': deal['opportunity']
-                }
-                data[deal['assigned_by_id']].append(temp)
-
-    updated_data = []
-    all_deals = 0
-    for key, val in data.items():
-        user = get_user_by_id(key)
-        if user is None:
-            user = 'unknown'
-        opportunity, opportunity_count = 0, 0
-        for value in val:
-            if value['opportunity'] > 0.0:
-                opportunity_count += 1
-            opportunity += value['opportunity']
-            all_deals += 1
-        new_val = {
-            'responsible_user': user,
-            'sales_price': int(opportunity),
-            'average_check': round(int(opportunity) / opportunity_count if opportunity_count > 0 else 0, 1),
-            'conversion': round((opportunity_count / all_deals if opportunity_count > 0 and all_deals > 0 else 0) * 100,
-                                1),
-            'sales_count': opportunity_count,
-            'new_deals': get_all_deals_per_user(deals, key),
-            'leads': get_active_deals_count(key)
-        }
-
-        updated_data.append(new_val)
-
-    conn.close()
-    return updated_data
+            return sum_conversion(returning_users)
+        return ''
+    return ''

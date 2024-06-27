@@ -1,9 +1,12 @@
+import os
+import requests
 from django.shortcuts import render
-from .utils import get_deals
+from .utils import get_datas
 
 
 def home(r):
-    data = get_deals()
-    informations = {'leaderboard': data}
+    users_data = get_datas()
+    informations = {
+        'leaderboard': users_data
+    }
     return render(r, 'home.html', context=informations)
-
