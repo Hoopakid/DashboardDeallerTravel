@@ -44,7 +44,8 @@ def get_in_out_info():
 
     yesterday_date = (datetime.now() - timedelta(days=1)).date()
     today_date = datetime.now().date()
-    timed_url = url + f'?start_date={today_date}&end_date={today_date}'
+    timed_url = url + f'?start_date={yesterday_date}&end_date={today_date}'
+    # timed_url = url + f'?start_date={today_date}&end_date={today_date}'
 
     response = requests.get(timed_url, headers=headers)
     if response.status_code == 200:
