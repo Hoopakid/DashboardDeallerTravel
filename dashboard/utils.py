@@ -21,64 +21,77 @@ def sum_conversion(datas):
 
 
 def get_datas():
-    response = requests.get(API_URL + 'get-ticket-data')
     get_in_data = by_users()
-    if response.status_code == 200:
-        new_response = requests.get(NEW_API_URL + 'api/get-sarkor-data')
-        if new_response.status_code == 200:
-            call_data = new_response.json()
-            sales_data = response.json()
-            returning_users = []
-
-            if len(sales_data) >= 1 and len(call_data['ctx']) >= 1:
+    if get_in_data != {}:
+        response = requests.get(API_URL + 'get-ticket-data')
+        if response.status_code == 200:
+            new_response = requests.get(NEW_API_URL + 'api/get-sarkor-data')
+            if new_response.status_code == 200:
+                call_data = new_response.json()
+                sales_data = response.json()
+                returning_users = []
                 ctx = {call['name'].lower(): call for call in call_data['ctx']}
 
-                for sale in sales_data[1:]:
-                    user_name = sale.get('responsible_user', '').lower()
-                    best_match = difflib.get_close_matches(user_name, get_in_data.keys(), n=1, cutoff=0.6)
-                    if best_match:
-                        matched_user = best_match[0]
-                        user_data = get_in_data[matched_user]
+                users_set = set(user['name'].lower() for user in call_data['ctx']) | set(
+                    sale.get('responsible_user', '').lower() for sale in sales_data)
 
-                        temp = {
-                            'responsible_user': sale.get('responsible_user', '').capitalize(),
-                            'sales_price': sale.get('opportunity', 0),
-                            'sales_count': sale.get('count', 0),
-                            'call_average': 0,
-                            'missed_calls': 0,
-                            'call_in': 0,
-                            'call_out': 0,
-                            'all_calls': 0,
-                            'call_seconds': 0,
-                            'all_time': user_data.get('all', ''),
-                            'in_time': user_data.get('in', ''),
-                            'out_time': user_data.get('out', '')
-                        }
+                for user_name in users_set:
+                    user_name_lower = user_name.lower()
 
-                        if user_name in ctx:
-                            call_info = ctx[user_name]
-                            temp.update({
-                                'call_average': call_info.get('calls_average', 0),
-                                'missed_calls': call_info.get('missed_calls_count', 0),
-                                'call_in': call_info.get('call_in', 0),
-                                'call_out': call_info.get('call_out', 0),
-                                'all_calls': call_info.get('all_calls_count', 0),
-                                'call_seconds': call_info.get('calls_second', 0)
-                            })
-                        elif user_name == 'dimitriy' and 'samandar1' in ctx:
-                            call_info = ctx['samandar1']
-                            temp.update({
-                                'responsible_user': 'Samandar',
-                                'call_average': call_info.get('calls_average', 0),
-                                'missed_calls': call_info.get('missed_calls_count', 0),
-                                'call_in': call_info.get('call_in', 0),
-                                'call_out': call_info.get('call_out', 0),
-                                'all_calls': call_info.get('all_calls_count', 0),
-                                'call_seconds': call_info.get('calls_second', 0)
-                            })
+                    if user_name_lower in ['samandar', 'dimitriy']:
+                        user_name_lower = 'samandar'
+                        responsible_user = 'Samandar'
+                    else:
+                        responsible_user = user_name.capitalize()
 
-                        returning_users.append(temp)
+                    matched_user = difflib.get_close_matches(user_name_lower, get_in_data.keys(), n=1, cutoff=0.6)
+                    user_data = get_in_data.get(matched_user[0]) if matched_user else {}
 
-            return sum_conversion(returning_users)
-        return ''
-    return ''
+                    sales_info_list = [sale for sale in sales_data if
+                                       sale.get('name', '').lower() in ['samandar', 'dimitriy']]
+
+                    combined_sales_info = {
+                        'today_opportunity': sum(sale.get('today_opportunity', 0) for sale in sales_info_list),
+                        'today_count': sum(sale.get('today_count', 0) for sale in sales_info_list),
+                        'monday': sum(sale.get('monday', 0) for sale in sales_info_list),
+                        'tuesday': sum(sale.get('tuesday', 0) for sale in sales_info_list),
+                        'wednesday': sum(sale.get('wednesday', 0) for sale in sales_info_list),
+                        'thursday': sum(sale.get('thursday', 0) for sale in sales_info_list),
+                        'friday': sum(sale.get('friday', 0) for sale in sales_info_list),
+                        'saturday': sum(sale.get('saturday', 0) for sale in sales_info_list),
+                        'sunday': sum(sale.get('sunday', 0) for sale in sales_info_list)
+                    }
+
+                    call_info = ctx.get(user_name_lower, {})
+
+                    temp = {
+                        'responsible_user': responsible_user,
+                        'sales_price': combined_sales_info.get('today_opportunity', 0),
+                        'sales_count': combined_sales_info.get('today_count', 0),
+                        'call_average': call_info.get('calls_average', 0),
+                        'missed_calls': call_info.get('missed_calls_count', 0),
+                        'call_in': call_info.get('call_in', 0),
+                        'call_out': call_info.get('call_out', 0),
+                        'all_calls': call_info.get('all_calls_count', 0),
+                        'call_seconds': call_info.get('calls_second', 0),
+                        'all_time': user_data.get('all', ''),
+                        'in_time': user_data.get('in', ''),
+                        'out_time': user_data.get('out', ''),
+                        'weekly': {'monday': combined_sales_info.get('monday', 0),
+                                   'tuesday': combined_sales_info.get('tuesday', 0),
+                                   'wednesday': combined_sales_info.get('wednesday', 0),
+                                   'thursday': combined_sales_info.get('thursday', 0),
+                                   'friday': combined_sales_info.get('friday', 0),
+                                   'saturday': combined_sales_info.get('saturday', 0),
+                                   'sunday': combined_sales_info.get('sunday', 0)}
+                    }
+
+                    returning_users.append(temp)
+                conversed_users = sum_conversion(returning_users)
+                filtered_data = [user for user in conversed_users if user['responsible_user'] != 0 and user[
+                    'responsible_user'] != 'Отдел продажи авиакасса' and user['responsible_user'] != '' and user[
+                                     'responsible_user'] != 'Дилноза мухаммадсалиевна']
+                return filtered_data
+            return []
+        return []
+    return []
